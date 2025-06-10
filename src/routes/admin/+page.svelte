@@ -16,8 +16,11 @@
     target_amount: ''
   };
   
+  /** @type {any[]} */
   let projects = data.projects || [];
+  /** @type {any} */
   let stats = data.stats || {};
+  /** @type {any[]} */
   let recentDonations = data.recentDonations || [];
   
   async function logout() {

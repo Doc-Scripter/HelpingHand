@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   
+  /** @type {any[]} */
   let projects = [];
   let loading = true;
   
