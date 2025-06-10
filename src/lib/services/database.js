@@ -39,14 +39,22 @@ db.exec(`
 `);
 
 // Insert sample projects if none exist
-const projectCount = db.prepare('SELECT COUNT(*) as count FROM projects').get();
-if (projectCount.count === 0) {
-  db.exec(`
-    INSERT INTO projects (id, title, description, target_amount) VALUES
-    ('proj-1', 'Clean Water Initiative', 'Providing clean water access to rural communities in Kenya', 500000),
-    ('proj-2', 'Education Support Program', 'Supporting underprivileged children with school supplies and fees', 300000),
-    ('proj-3', 'Healthcare Mobile Clinic', 'Mobile healthcare services for remote areas', 750000)
-  `);
+try {
+  const projectCountResult = db.prepare('SELECT COUNT(*) as count FROM projects').get();
+  const projectCount = projectCountResult && typeof projectCountResult === 'object' && 'count' in projectCountResult 
+    ? projectCountResult.count 
+    : 0;
+    
+  if (Number(projectCount) === 0) {
+    db.exec(`
+      INSERT INTO projects (id, title, description, target_amount) VALUES
+      ('proj-1', 'Clean Water Initiative', 'Providing clean water access to rural communities in Kenya', 500000),
+      ('proj-2', 'Education Support Program', 'Supporting underprivileged children with school supplies and fees', 300000),
+      ('proj-3', 'Healthcare Mobile Clinic', 'Mobile healthcare services for remote areas', 750000)
+    `);
+  }
+} catch (error) {
+  console.error('Error checking/inserting sample projects:', error);
 }
 
 export default db;
