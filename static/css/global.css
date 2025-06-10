@@ -1,0 +1,10 @@
+:root {
+  --color-blue: #e0f2fe;
+  --color-green: #dcfce7;
+  --max-width: 1200px;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui;
+}
