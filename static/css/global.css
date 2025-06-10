@@ -7,6 +7,7 @@
 body {
   margin: 0;
   font-family: system-ui;
+  background-color: var(--color-green);
 }
 
 .navbar {
@@ -45,4 +46,60 @@ body {
 
   .navbar-links a:hover {
     color: #007bff; /* A blue color for hover effect */
+  }
+
+  footer {
+    background-color: var(--dark-green);
+    color: var(--white);
+    padding: 2rem 1rem;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: auto; /* Pushes the footer to the bottom */
+  }
+
+  .footer-content {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  footer p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  footer nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  footer nav ul li a {
+    color: var(--white);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+  }
+
+  footer nav ul li a:hover {
+    color: var(--light-green);
+  }
+
+  @media (min-width: 768px) {
+    .footer-content {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+
+    footer nav ul {
+      gap: 1.5rem;
+    }
   }
