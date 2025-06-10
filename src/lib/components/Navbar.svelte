@@ -49,8 +49,6 @@
   >
     <div 
       class="admin-popup" 
-      on:click|stopPropagation
-      on:keydown|stopPropagation
       role="document"
     >
       <button class="close-btn" on:click={closeAdminPopup} aria-label="Close">&times;</button>
