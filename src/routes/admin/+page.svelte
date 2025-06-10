@@ -6,7 +6,10 @@
   
   let showAddModal = false;
   let showEditModal = false;
+  
+  /** @type {any} */
   let editingProject = null;
+  
   let newProject = {
     title: '',
     description: '',
@@ -56,6 +59,8 @@
   }
   
   async function updateProject() {
+    if (!editingProject) return;
+    
     try {
       const response = await fetch('/api/projects', {
         method: 'PUT',
@@ -65,7 +70,7 @@
       
       if (response.ok) {
         const updatedProject = await response.json();
-        projects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
+        projects = projects.map(/** @param {any} p */ (p) => p.id === updatedProject.id ? updatedProject : p);
         closeEditModal();
         alert('Project updated successfully!');
       } else {
@@ -78,6 +83,9 @@
     }
   }
   
+  /**
+   * @param {string} projectId
+   */
   async function deleteProject(projectId) {
     if (!confirm('Are you sure you want to delete this project?')) return;
     
@@ -89,9 +97,10 @@
       });
       
       if (response.ok) {
-        projects = projects.filter(p => p.id !== projectId);
+        projects = projects.filter(/** @param {any} p */ (p) => p.id !== projectId);
         stats.totalProjects--;
-        if (projects.find(p => p.id === projectId)?.status === 'active') {
+        const deletedProject = projects.find(/** @param {any} p */ (p) => p.id === projectId);
+        if (deletedProject?.status === 'active') {
           stats.activeProjects--;
         }
         alert('Project deleted successfully!');
@@ -114,6 +123,9 @@
     showAddModal = false;
   }
   
+  /**
+   * @param {any} project
+   */
   function openEditModal(project) {
     editingProject = { ...project };
     showEditModal = true;
