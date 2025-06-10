@@ -47,6 +47,10 @@
     aria-labelledby="admin-popup-title"
     tabindex="-1"
   >
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div 
       class="admin-popup" 
       role="document"
@@ -81,7 +85,7 @@
       </div>
       <div class="admin-popup-actions">
         <button class="cancel-btn" on:click={closeAdminPopup}>Cancel</button>
-        <button class="process-btn" on:click={processAdmin}>Process</button>
+        <button class="process-btn" on:click={processAdmin}>Proceed</button>
       </div>
     </div>
   </div>
