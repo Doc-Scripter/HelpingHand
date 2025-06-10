@@ -24,3 +24,4 @@ vite.config.ts.timestamp-*
 
 #node modules
 /node_modules
+.trae
