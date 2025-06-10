@@ -1,19 +1,53 @@
 <script>
-  // Page logic here
+  import { onMount } from 'svelte';
+  
+  let projects = [];
+  let loading = true;
+  
+  onMount(async () => {
+    try {
+      const response = await fetch('/api/projects');
+      projects = await response.json();
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    } finally {
+      loading = false;
+    }
+  });
 </script>
 
-<main class="container">
-  <h1>Helping Hands Community Platform</h1>
-  <nav>
-    <a href="/donate">Make a Donation</a>
-    <a href="/projects">View Projects</a>
-  </nav>
-  <section class="hero">
-    <h2>Empowering Change Through Anonymous Giving</h2>
-  </section>
-</main>
+<svelte:head>
+  <title>HelpingHand - Anonymous Donations</title>
+</svelte:head>
 
-<style>
-  .container { max-width: 1200px; margin: 0 auto; }
-  .hero { padding: 4rem 0; text-align: center; }
-</style>
+<div class="hero">
+  <h1>HelpingHand</h1>
+  <p>Support social projects through anonymous donations</p>
+</div>
+
+<section class="projects">
+  <h2>Active Projects</h2>
+  
+  {#if loading}
+    <div class="loading">Loading projects...</div>
+  {:else if projects.length === 0}
+    <div class="no-projects">No active projects at the moment.</div>
+  {:else}
+    <div class="project-grid">
+      {#each projects as project}
+        <div class="project-card">
+          <h3>{project.title}</h3>
+          <p>{project.description}</p>
+          <div class="project-meta">
+            <span class="target">Target: KSh {project.target_amount?.toLocaleString() || 'N/A'}</span>
+            <span class="raised">Raised: KSh {project.raised_amount?.toLocaleString() || '0'}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress" style="width: {Math.min((project.raised_amount || 0) / (project.target_amount || 1) * 100, 100)}%"></div>
+          </div>
+          <a href="/donate/{project.id}" class="donate-btn">Donate Now</a>
+        </div>
+      {/each}
+    </div>
+  {/if}
+</section>
