@@ -41,11 +41,12 @@
       
       if (response.ok) {
         showMessage('Donation initiated successfully! Please check your phone for M-Pesa prompt.', 'success');
+        const donationAmount = parseFloat(amount);
         // Reset form
         amount = '';
         phoneNumber = '';
         // Update raised amount
-        project.raised_amount = (project.raised_amount || 0) + parseFloat(amount);
+        project.raised_amount = (project.raised_amount || 0) + donationAmount;
       } else {
         showMessage(result.error || 'Donation failed', 'error');
       }
@@ -57,6 +58,10 @@
     }
   }
   
+  /**
+   * @param {string} text
+   * @param {string} type
+   */
   function showMessage(text, type) {
     message = text;
     messageType = type;
@@ -66,6 +71,10 @@
     }, 5000);
   }
   
+  /**
+   * @param {string} value
+   * @returns {string}
+   */
   function formatPhoneNumber(value) {
     // Remove non-digits
     let cleaned = value.replace(/\D/g, '');
@@ -80,11 +89,15 @@
     return cleaned;
   }
   
+  /**
+   * @param {Event} event
+   */
   function handlePhoneInput(event) {
-    phoneNumber = formatPhoneNumber(event.target.value);
+    const target = /** @type {HTMLInputElement} */ (event.target);
+    phoneNumber = formatPhoneNumber(target.value);
   }
   
-  $: progressPercentage = Math.min((project.raised_amount || 0) / project.target_amount * 100, 100);
+  $: progressPercentage = Math.min((project.raised_amount || 0) / (project.target_amount || 1) * 100, 100);
 </script>
 
 <svelte:head>
