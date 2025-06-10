@@ -50,6 +50,7 @@
     <div 
       class="admin-popup" 
       role="document"
+      on:click|stopPropagation
     >
       <button class="close-btn" on:click={closeAdminPopup} aria-label="Close">&times;</button>
       <div class="admin-popup-header">
