@@ -20,7 +20,26 @@ db.exec(`
     amount REAL NOT NULL,
     project_id TEXT NOT NULL,
     mpesa_code TEXT,
+    phone_number TEXT,
+    transaction_ref TEXT,
+    transaction_date TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects (id)
+  );
+
+  CREATE TABLE IF NOT EXISTS pending_transactions (
+    id INTEGER PRIMARY KEY,
+    checkout_request_id TEXT UNIQUE NOT NULL,
+    merchant_request_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    amount REAL NOT NULL,
+    phone_number TEXT NOT NULL,
+    transaction_ref TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    mpesa_receipt_number TEXT,
+    failure_reason TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
     FOREIGN KEY (project_id) REFERENCES projects (id)
   );
 
