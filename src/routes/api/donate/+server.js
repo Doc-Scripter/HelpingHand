@@ -20,36 +20,13 @@ export async function POST({ request }) {
       return json({ error: 'Project not found or inactive' }, { status: 404 });
     }
     
-    // Check if M-Pesa is properly configured
+    // Check M-Pesa configuration
     if (!process.env.MPESA_CONSUMER_KEY || !process.env.MPESA_CONSUMER_SECRET) {
-      console.warn('M-Pesa not configured, using simulation mode');
-      
-      // Simulate M-Pesa payment for development/demo
-      const mpesa_code = 'SIM' + Date.now().toString().slice(-8);
-      
-      // Insert donation record directly
-      const result = db.prepare(`
-        INSERT INTO donations (amount, project_id, mpesa_code, phone_number, transaction_ref)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(amount, project_id, mpesa_code, phone_number, `HH-${project_id}-${Date.now()}`);
-      
-      // Update project raised amount
-      db.prepare(`
-        UPDATE projects 
-        SET raised_amount = raised_amount + ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(amount, project_id);
-      
-      return json({
-        success: true,
-        donation_id: result.lastInsertRowid,
-        mpesa_code,
-        message: 'Donation processed successfully (simulation mode)',
-        simulation: true
-      }, { status: 201 });
+      return json({ 
+        error: 'M-Pesa payment service is not configured. Please contact support.' 
+      }, { status: 503 });
     }
     
-    // Use real M-Pesa integration
     try {
       // Generate unique transaction reference
       const transactionRef = `HH-${project_id}-${Date.now()}`;
@@ -62,38 +39,62 @@ export async function POST({ request }) {
         transactionDesc: `Donation to ${project.title}`
       };
 
+      console.log('Initiating M-Pesa STK Push:', {
+        amount,
+        phoneNumber: phone_number,
+        projectId: project_id,
+        transactionRef
+      });
+
       // Initiate STK Push
       const stkResult = await mpesaService.initiateSTKPush(paymentData);
       
       if (!stkResult.success) {
+        console.error('STK Push failed:', stkResult);
         return json({ 
           success: false, 
-          error: stkResult.error,
+          error: stkResult.error || 'Failed to initiate M-Pesa payment',
           code: stkResult.code 
         }, { status: 400 });
       }
 
+      console.log('STK Push successful:', {
+        checkoutRequestId: stkResult.checkoutRequestId,
+        merchantRequestId: stkResult.merchantRequestId
+      });
+
       // Store pending transaction in database
-      db.prepare(`
-        INSERT INTO pending_transactions (
-          checkout_request_id, 
-          merchant_request_id, 
-          project_id, 
-          amount, 
-          phone_number, 
-          transaction_ref,
-          status,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).run(
-        stkResult.checkoutRequestId,
-        stkResult.merchantRequestId,
-        project_id,
-        amount,
-        phone_number,
-        transactionRef,
-        'pending'
-      );
+      try {
+        db.prepare(`
+          INSERT INTO pending_transactions (
+            checkout_request_id, 
+            merchant_request_id, 
+            project_id, 
+            amount, 
+            phone_number, 
+            transaction_ref,
+            status,
+            created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).run(
+          stkResult.checkoutRequestId,
+          stkResult.merchantRequestId,
+          project_id,
+          amount,
+          phone_number,
+          transactionRef,
+          'pending'
+        );
+
+        console.log('Pending transaction stored successfully');
+
+      } catch (dbError) {
+        console.error('Database error storing pending transaction:', dbError);
+        return json({ 
+          success: false, 
+          error: 'Failed to store transaction. Please try again.' 
+        }, { status: 500 });
+      }
 
       return json({
         success: true,
@@ -101,19 +102,19 @@ export async function POST({ request }) {
         checkoutRequestId: stkResult.checkoutRequestId,
         customerMessage: stkResult.customerMessage,
         transactionRef: transactionRef,
-        instructions: 'You will receive an M-Pesa prompt on your phone. Enter your M-Pesa PIN to complete the donation.'
+        instructions: 'You will receive an M-Pesa prompt on your phone within 30 seconds. Enter your M-Pesa PIN to complete the donation.'
       }, { status: 200 });
 
     } catch (mpesaError) {
       console.error('M-Pesa integration error:', mpesaError);
       return json({ 
         success: false, 
-        error: 'Failed to process M-Pesa payment. Please try again.' 
-      }, { status: 500 });
+        error: 'M-Pesa service temporarily unavailable. Please try again later.' 
+      }, { status: 503 });
     }
     
   } catch (error) {
-    console.error('Donation error:', error);
-    return json({ error: 'Failed to process donation' }, { status: 500 });
+    console.error('Donation API error:', error);
+    return json({ error: 'Failed to process donation request' }, { status: 500 });
   }
 }
