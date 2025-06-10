@@ -38,12 +38,25 @@
 </nav>
 
 {#if showAdminPopup}
-  <div class="admin-popup-overlay" on:click={closeAdminPopup}>
-    <div class="admin-popup" on:click|stopPropagation>
+  <div 
+    class="admin-popup-overlay" 
+    on:click={closeAdminPopup}
+    on:keydown={(e) => e.key === 'Escape' && closeAdminPopup()}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="admin-popup-title"
+    tabindex="-1"
+  >
+    <div 
+      class="admin-popup" 
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+      role="document"
+    >
       <button class="close-btn" on:click={closeAdminPopup} aria-label="Close">&times;</button>
       <div class="admin-popup-header">
         <span class="shield-icon">🛡️</span>
-        <span class="admin-title">Admin Access</span>
+        <span class="admin-title" id="admin-popup-title">Admin Access</span>
       </div>
       <div class="admin-popup-body">
         <label class="password-label">
