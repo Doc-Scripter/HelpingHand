@@ -1,4 +1,8 @@
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 /**
  * M-Pesa API Service
@@ -18,6 +22,17 @@ class MpesaService {
     this.baseUrl = this.environment === 'production' 
       ? 'https://api.safaricom.co.ke' 
       : 'https://sandbox.safaricom.co.ke';
+      
+    console.log('M-Pesa Service initialized:', {
+      environment: this.environment,
+      baseUrl: this.baseUrl,
+      businessShortCode: this.businessShortCode,
+      hasConsumerKey: !!this.consumerKey,
+      hasConsumerSecret: !!this.consumerSecret,
+      hasPasskey: !!this.passkey,
+      callbackUrl: this.callbackUrl,
+      timeoutUrl: this.timeoutUrl
+    });
   }
 
   /**
@@ -26,7 +41,13 @@ class MpesaService {
    */
   async generateToken() {
     try {
+      if (!this.consumerKey || !this.consumerSecret) {
+        throw new Error('M-Pesa consumer key and secret are required');
+      }
+      
       const auth = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString('base64');
+      
+      console.log('Generating M-Pesa token...');
       
       const response = await fetch(`${this.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
         method: 'GET',
@@ -37,14 +58,21 @@ class MpesaService {
       });
 
       if (!response.ok) {
-        throw new Error(`Token generation failed: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Token generation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Token generation failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Token generated successfully');
       return data.access_token;
     } catch (error) {
       console.error('M-Pesa token generation error:', error);
-      throw new Error('Failed to generate M-Pesa access token');
+      throw new Error(`Failed to generate M-Pesa access token: ${error.message}`);
     }
   }
 
@@ -97,7 +125,15 @@ class MpesaService {
     
     // Validate length (should be 12 digits for Kenya)
     if (cleaned.length !== 12) {
-      throw new Error('Invalid phone number format');
+      throw new Error(`Invalid phone number format: ${phoneNumber}. Expected format: 0712345678`);
+    }
+    
+    // Validate it's a valid Kenyan mobile number
+    const validPrefixes = ['254701', '254702', '254703', '254704', '254705', '254706', '254707', '254708', '254709', '254710', '254711', '254712', '254713', '254714', '254715', '254716', '254717', '254718', '254719', '254720', '254721', '254722', '254723', '254724', '254725', '254726', '254727', '254728', '254729'];
+    const prefix = cleaned.substring(0, 6);
+    
+    if (!validPrefixes.includes(prefix)) {
+      throw new Error(`Invalid Kenyan mobile number: ${phoneNumber}. Must be a valid Safaricom, Airtel, or Telkom number.`);
     }
     
     return cleaned;
@@ -118,18 +154,25 @@ class MpesaService {
       
       // Validate inputs
       if (!phoneNumber || !amount || !accountReference) {
-        throw new Error('Missing required payment data');
+        throw new Error('Missing required payment data: phoneNumber, amount, accountReference');
       }
 
       if (amount < 1) {
         throw new Error('Amount must be at least 1 KSh');
       }
 
+      if (!this.callbackUrl || !this.timeoutUrl) {
+        throw new Error('Callback URLs not configured. Please set MPESA_CALLBACK_URL and MPESA_TIMEOUT_URL');
+      }
+
       // Get access token
+      console.log('Getting M-Pesa access token...');
       const accessToken = await this.generateToken();
       
       // Format phone number
+      console.log('Formatting phone number:', phoneNumber);
       const formattedPhone = this.formatPhoneNumber(phoneNumber);
+      console.log('Formatted phone number:', formattedPhone);
       
       // Generate password and timestamp
       const timestamp = this.getTimestamp();
@@ -150,7 +193,13 @@ class MpesaService {
         TransactionDesc: transactionDesc || `Payment for ${accountReference}`
       };
 
+      console.log('STK Push payload:', {
+        ...stkPushPayload,
+        Password: '[HIDDEN]'
+      });
+
       // Make STK Push request
+      console.log('Sending STK Push request...');
       const response = await fetch(`${this.baseUrl}/mpesa/stkpush/v1/processrequest`, {
         method: 'POST',
         headers: {
@@ -160,18 +209,19 @@ class MpesaService {
         body: JSON.stringify(stkPushPayload)
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`STK Push failed: ${errorData.errorMessage || response.statusText}`);
-      }
-
       const responseData = await response.json();
+      console.log('STK Push response:', responseData);
+
+      if (!response.ok) {
+        throw new Error(`STK Push failed: ${responseData.errorMessage || response.statusText}`);
+      }
       
       // Check if request was successful
       if (responseData.ResponseCode !== '0') {
         throw new Error(`STK Push failed: ${responseData.ResponseDescription}`);
       }
 
+      console.log('STK Push initiated successfully');
       return {
         success: true,
         checkoutRequestId: responseData.CheckoutRequestID,
@@ -209,6 +259,8 @@ class MpesaService {
         CheckoutRequestID: checkoutRequestId
       };
 
+      console.log('Querying STK Push status for:', checkoutRequestId);
+
       const response = await fetch(`${this.baseUrl}/mpesa/stkpushquery/v1/query`, {
         method: 'POST',
         headers: {
@@ -223,6 +275,7 @@ class MpesaService {
       }
 
       const responseData = await response.json();
+      console.log('STK Push query response:', responseData);
       
       return {
         success: true,
@@ -248,6 +301,8 @@ class MpesaService {
    */
   processCallback(callbackData) {
     try {
+      console.log('Processing M-Pesa callback:', JSON.stringify(callbackData, null, 2));
+      
       const { Body } = callbackData;
       const { stkCallback } = Body;
       
@@ -282,9 +337,12 @@ class MpesaService {
               break;
           }
         });
+        
+        console.log('Payment successful:', result.transactionData);
       } else {
         result.success = false;
         result.error = stkCallback.ResultDesc;
+        console.log('Payment failed:', result.error);
       }
 
       return result;
