@@ -15,6 +15,7 @@ export async function POST({ request }) {
     }
     
     // Verify project exists and is active
+    /** @type {any} */
     const project = db.prepare('SELECT * FROM projects WHERE id = ? AND status = ?').get(project_id, 'active');
     if (!project) {
       return json({ error: 'Project not found or inactive' }, { status: 404 });
@@ -36,17 +37,19 @@ export async function POST({ request }) {
         phoneNumber: phone_number,
         amount: amount,
         accountReference: transactionRef,
-        transactionDesc: `Donation to ${project.title}`
+        transactionDesc: `Donation to ${project.title || 'Project'}`
       };
 
       console.log('Initiating M-Pesa STK Push:', {
         amount,
         phoneNumber: phone_number,
         projectId: project_id,
+        projectTitle: project.title,
         transactionRef
       });
 
       // Initiate STK Push
+      /** @type {any} */
       const stkResult = await mpesaService.initiateSTKPush(paymentData);
       
       if (!stkResult.success) {
