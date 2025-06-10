@@ -5,7 +5,8 @@ export async function GET() {
   try {
     const projects = db.prepare(`
       SELECT p.*, 
-             COALESCE(SUM(d.amount), 0) as raised_amount
+             COALESCE(SUM(d.amount), 0) as raised_amount,
+             ROUND((COALESCE(SUM(d.amount), 0) / p.target_amount) * 100, 2) as progress_percentage
       FROM projects p
       LEFT JOIN donations d ON p.id = d.project_id
       WHERE p.status = 'active'
