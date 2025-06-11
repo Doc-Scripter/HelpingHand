@@ -72,30 +72,21 @@
       clearInterval(/** @type {number} */ (statusCheckInterval));
     }
     
-    // Check status every 5 seconds for up to 2 minutes
-    let attempts = 0;
-    const maxAttempts = 24; // 2 minutes
-    
+    // Check status every 5 seconds indefinitely until we get a definitive result
     statusCheckInterval = setInterval(async () => {
-      attempts++;
-      
-      if (attempts > maxAttempts) {
-        clearInterval(/** @type {number} */ (statusCheckInterval));
-        showMessage('Payment status check timed out. Please contact support if payment was deducted.', 'warning');
-        showStatusCheck = false;
-        return;
-      }
-      
       try {
         const response = await fetch(`/api/mpesa?checkout_request_id=${checkoutRequestId}`);
         const result = await response.json();
         
-        if (result.success && result.localTransaction) {
+        if (result.success) {
+          const mpesaStatus = result.mpesaStatus;
           const transaction = result.localTransaction;
           
-          if (transaction.status === 'completed') {
+          // Check M-Pesa status first using result descriptions
+          if (mpesaStatus.success && !mpesaStatus.pending && mpesaStatus.resultCode === 'TRANSACTION_SUCCESS') {
+            // Transaction completed successfully
             clearInterval(/** @type {number} */ (statusCheckInterval));
-            showMessage('Payment completed successfully! Thank you for your donation.', 'success');
+            showMessage('🎉 Payment completed successfully! Thank you for your generous donation.', 'success');
             showStatusCheck = false;
             
             // Update project amount and reset form
@@ -104,14 +95,57 @@
             phoneNumber = '';
             project.raised_amount = (project.raised_amount || 0) + donationAmount;
             
-          } else if (transaction.status === 'failed' || transaction.status === 'timeout') {
+          } else if (!mpesaStatus.success && mpesaStatus.resultCode === 'TRANSACTION_CANCELLED') {
+            // Transaction was cancelled
             clearInterval(/** @type {number} */ (statusCheckInterval));
-            showMessage(`Payment ${transaction.status}: ${transaction.failure_reason || 'Please try again.'}`, 'error');
+            showMessage(`Payment cancelled: ${mpesaStatus.resultDesc || 'Request cancelled by user'}`, 'error');
             showStatusCheck = false;
+            
+          } else if (!mpesaStatus.success && mpesaStatus.resultCode === 'TRANSACTION_TIMEOUT') {
+            // Transaction timed out
+            clearInterval(/** @type {number} */ (statusCheckInterval));
+            showMessage(`Payment timed out: ${mpesaStatus.resultDesc || 'Please try again'}`, 'error');
+            showStatusCheck = false;
+            
+          } else if (!mpesaStatus.success && mpesaStatus.resultCode === 'TRANSACTION_FAILED') {
+            // Transaction failed due to user error (insufficient funds, wrong PIN, etc.)
+            clearInterval(/** @type {number} */ (statusCheckInterval));
+            showMessage(`Payment failed: ${mpesaStatus.resultDesc || 'Please try again'}`, 'error');
+            showStatusCheck = false;
+            
+          } else if (mpesaStatus.pending || mpesaStatus.resultCode === 'TRANSACTION_PENDING') {
+            // Transaction is still being processed - continue checking indefinitely
+            console.log(`Transaction still processing: ${mpesaStatus.resultDesc}`);
+            
+          } else if (!mpesaStatus.success && mpesaStatus.resultCode === 'QUERY_FAILED') {
+            // Query failed due to network/system issues - continue checking
+            console.log('Query failed, will retry...');
+            
+          } else {
+            // Fallback to local transaction status
+            if (transaction) {
+              if (transaction.status === 'completed') {
+                clearInterval(/** @type {number} */ (statusCheckInterval));
+                showMessage('🎉 Payment completed successfully! Thank you for your generous donation.', 'success');
+                showStatusCheck = false;
+                
+                // Update project amount and reset form
+                const donationAmount = parseFloat(amount);
+                amount = '';
+                phoneNumber = '';
+                project.raised_amount = (project.raised_amount || 0) + donationAmount;
+                
+              } else if (transaction.status === 'failed') {
+                clearInterval(/** @type {number} */ (statusCheckInterval));
+                showMessage(`Payment failed: ${transaction.failure_reason || 'Please try again'}`, 'error');
+                showStatusCheck = false;
+              }
+            }
           }
         }
       } catch (error) {
         console.error('Status check error:', error);
+        // Don't stop checking on network errors, just log and continue
       }
     }, 5000);
   }
