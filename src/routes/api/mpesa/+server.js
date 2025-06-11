@@ -112,18 +112,48 @@ export async function GET({ url }) {
     // Query M-Pesa for transaction status
     const statusResult = await mpesaService.querySTKPushStatus(checkoutRequestId);
     
-    if (!statusResult.success) {
-      return json({ 
-        success: false, 
-        error: statusResult.error 
-      }, { status: 400 });
-    }
-
     // Check local database for transaction status
     const localTransaction = db.prepare(`
       SELECT * FROM pending_transactions 
       WHERE checkout_request_id = ?
     `).get(checkoutRequestId);
+
+    // Handle successful transaction
+    if (statusResult.success && !statusResult.pending) {
+      // Update local transaction status to completed
+      if (localTransaction && localTransaction.status === 'pending') {
+        db.prepare(`
+          UPDATE pending_transactions 
+          SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+          WHERE checkout_request_id = ?
+        `).run(checkoutRequestId);
+        
+        // Update the local transaction object
+        localTransaction.status = 'completed';
+        localTransaction.completed_at = new Date().toISOString();
+      }
+    }
+
+    // Handle failed transaction
+    if (!statusResult.success && (
+      statusResult.resultCode === 'TRANSACTION_CANCELLED' || 
+      statusResult.resultCode === 'TRANSACTION_TIMEOUT' || 
+      statusResult.resultCode === 'TRANSACTION_FAILED'
+    )) {
+      // Update local transaction status to failed
+      if (localTransaction && localTransaction.status === 'pending') {
+        db.prepare(`
+          UPDATE pending_transactions 
+          SET status = 'failed', failure_reason = ?, completed_at = CURRENT_TIMESTAMP 
+          WHERE checkout_request_id = ?
+        `).run(statusResult.resultDesc, checkoutRequestId);
+        
+        // Update the local transaction object
+        localTransaction.status = 'failed';
+        localTransaction.failure_reason = statusResult.resultDesc;
+        localTransaction.completed_at = new Date().toISOString();
+      }
+    }
 
     return json({
       success: true,
