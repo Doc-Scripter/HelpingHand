@@ -9,8 +9,8 @@
   let messageType = '';
   let checkoutRequestId = '';
   let showStatusCheck = false;
-  /** @type {number | undefined} */
-  let statusCheckInterval;
+  /** @type {number | null} */
+  let statusCheckInterval = null;
 
   async function handleDonation() {
     if (!amount || !phoneNumber) {
@@ -69,7 +69,7 @@
 
   function startStatusChecking() {
     if (statusCheckInterval) {
-      clearInterval(statusCheckInterval);
+      clearInterval(/** @type {number} */ (statusCheckInterval));
     }
     
     // Check status every 5 seconds for up to 2 minutes
@@ -80,7 +80,7 @@
       attempts++;
       
       if (attempts > maxAttempts) {
-        clearInterval(statusCheckInterval);
+        clearInterval(/** @type {number} */ (statusCheckInterval));
         showMessage('Payment status check timed out. Please contact support if payment was deducted.', 'warning');
         showStatusCheck = false;
         return;
@@ -94,7 +94,7 @@
           const transaction = result.localTransaction;
           
           if (transaction.status === 'completed') {
-            clearInterval(statusCheckInterval);
+            clearInterval(/** @type {number} */ (statusCheckInterval));
             showMessage('Payment completed successfully! Thank you for your donation.', 'success');
             showStatusCheck = false;
             
@@ -105,7 +105,7 @@
             project.raised_amount = (project.raised_amount || 0) + donationAmount;
             
           } else if (transaction.status === 'failed' || transaction.status === 'timeout') {
-            clearInterval(statusCheckInterval);
+            clearInterval(/** @type {number} */ (statusCheckInterval));
             showMessage(`Payment ${transaction.status}: ${transaction.failure_reason || 'Please try again.'}`, 'error');
             showStatusCheck = false;
           }
@@ -118,7 +118,7 @@
 
   function cancelStatusCheck() {
     if (statusCheckInterval) {
-      clearInterval(statusCheckInterval);
+      clearInterval(/** @type {number} */ (statusCheckInterval));
     }
     showStatusCheck = false;
     showMessage('Status checking cancelled. Payment may still be processing.', 'info');
@@ -171,7 +171,7 @@
   import { onDestroy } from 'svelte';
   onDestroy(() => {
     if (statusCheckInterval) {
-      clearInterval(statusCheckInterval);
+      clearInterval(/** @type {number} */ (statusCheckInterval));
     }
   });
 </script>
