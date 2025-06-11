@@ -244,177 +244,171 @@ class MpesaService {
   }
 
   /**
-   * Query STK Push transaction status with retry logic
+   * Query STK Push transaction status - single attempt, no retry logic
    * @param {string} checkoutRequestId - Checkout request ID from STK Push
-   * @param {number} maxRetries - Maximum number of retry attempts (default: 3)
-   * @param {number} retryDelay - Delay between retries in milliseconds (default: 2000)
    * @returns {Promise<Object>} Transaction status
    */
-  async querySTKPushStatus(checkoutRequestId, maxRetries = 3, retryDelay = 2000) {
-    let lastError;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Querying STK Push status for: ${checkoutRequestId} (attempt ${attempt}/${maxRetries})`);
+  async querySTKPushStatus(checkoutRequestId) {
+    try {
+      console.log(`Querying STK Push status for: ${checkoutRequestId}`);
+      
+      const accessToken = await this.generateToken();
+      const timestamp = this.getTimestamp();
+      const password = this.generatePassword();
+
+      const queryPayload = {
+        BusinessShortCode: this.businessShortCode,
+        Password: password,
+        Timestamp: timestamp,
+        CheckoutRequestID: checkoutRequestId
+      };
+
+      const response = await fetch(`${this.baseUrl}/mpesa/stkpushquery/v1/query`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(queryPayload)
+      });
+
+      // Handle different response scenarios
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('STK Push query response:', responseData);
         
-        const accessToken = await this.generateToken();
-        const timestamp = this.getTimestamp();
-        const password = this.generatePassword();
-
-        const queryPayload = {
-          BusinessShortCode: this.businessShortCode,
-          Password: password,
-          Timestamp: timestamp,
-          CheckoutRequestID: checkoutRequestId
-        };
-
-        const response = await fetch(`${this.baseUrl}/mpesa/stkpushquery/v1/query`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(queryPayload)
-        });
-
-        // Handle different response scenarios
-        if (response.ok) {
-          const responseData = await response.json();
-          console.log('STK Push query response:', responseData);
-          
-          // Check if transaction was cancelled or timed out (even with successful HTTP response)
-          const resultCode = responseData.ResultCode;
-          const resultDesc = responseData.ResultDesc || '';
-          
-          // M-Pesa Result Codes for cancellation/timeout:
-          // 1032 = Request cancelled by user
-          // 1037 = Timeout in completing transaction
-          // 1001 = Insufficient funds
-          // 1 = Insufficient funds
-          // 2001 = Wrong PIN
-          if (resultCode === '1032' || resultCode === '1037' || 
-              resultDesc.toLowerCase().includes('cancelled') ||
-              resultDesc.toLowerCase().includes('timeout') ||
-              resultDesc.toLowerCase().includes('expired')) {
-            
-            console.log('Transaction was cancelled or timed out by user');
-            return {
-              success: false,
-              error: 'Transaction was cancelled or timed out',
-              resultCode: 'TRANSACTION_CANCELLED',
-              resultDesc: resultDesc,
-              checkoutRequestId: responseData.CheckoutRequestID,
-              merchantRequestId: responseData.MerchantRequestID
-            };
-          }
-          
-          // Check for other failure result codes that should not be retried
-          if (resultCode === '1001' || resultCode === '1' || resultCode === '2001' ||
-              resultDesc.toLowerCase().includes('insufficient funds') ||
-              resultDesc.toLowerCase().includes('wrong pin')) {
-            
-            console.log('Transaction failed due to user error (insufficient funds/wrong PIN)');
-            return {
-              success: false,
-              error: 'Transaction failed',
-              resultCode: 'TRANSACTION_FAILED',
-              resultDesc: resultDesc,
-              checkoutRequestId: responseData.CheckoutRequestID,
-              merchantRequestId: responseData.MerchantRequestID
-            };
-          }
-          
-          // Success case (ResultCode 0) or still processing
+        const resultDesc = (responseData.ResultDesc || '').toLowerCase();
+        console.log(`Analyzing ResultDesc: "${responseData.ResultDesc}" (lowercase: "${resultDesc}")`);
+        
+        // Check for successful transaction using result description
+        if (resultDesc.includes('successfully') || resultDesc.includes('processed successfully') || resultDesc.includes('success')) {
+          console.log('Transaction completed successfully');
           return {
             success: true,
-            resultCode: responseData.ResultCode,
+            resultCode: 'TRANSACTION_SUCCESS',
             resultDesc: responseData.ResultDesc,
             checkoutRequestId: responseData.CheckoutRequestID,
             merchantRequestId: responseData.MerchantRequestID
           };
-        } else {
-          // Handle specific HTTP error codes
-          let errorData;
-          const errorText = await response.text();
-          
-          try {
-            errorData = JSON.parse(errorText);
-          } catch (parseError) {
-            errorData = { errorMessage: errorText };
-          }
-          
-          console.warn(`STK Push query failed (attempt ${attempt}): ${response.status} ${response.statusText} - ${errorText}`);
-          
-          // Handle M-Pesa specific error codes
-          if (errorData.errorCode === '500.001.1001' || 
-              (errorData.errorMessage && errorData.errorMessage.toLowerCase().includes('being processed'))) {
-            // Transaction is still being processed - this is expected for pending transactions
-            console.log('Transaction is still being processed, continuing to next attempt...');
-            lastError = new Error('Transaction still processing');
-            continue;
-          }
-          
-          // Handle timeout or cancellation errors
-          if (errorData.errorCode === '500.001.1002' || 
-              (errorData.errorMessage && (
-                errorData.errorMessage.toLowerCase().includes('timeout') ||
-                errorData.errorMessage.toLowerCase().includes('cancelled') ||
-                errorData.errorMessage.toLowerCase().includes('expired')
-              ))) {
-            // Transaction was cancelled or timed out
-            return {
-              success: false,
-              error: 'Transaction was cancelled or timed out',
-              resultCode: 'TRANSACTION_CANCELLED',
-              resultDesc: errorData.errorMessage || 'Transaction cancelled by user or timed out'
-            };
-          }
-          
-          // Don't retry for client errors (4xx), only server errors (5xx)
-          if (response.status >= 400 && response.status < 500) {
-            return {
-              success: false,
-              error: `Client error: ${response.status} ${response.statusText}`,
-              resultCode: 'CLIENT_ERROR',
-              resultDesc: errorData.errorMessage || response.statusText
-            };
-          }
-          
-          lastError = new Error(`Server error: ${response.status} ${response.statusText} - ${errorData.errorMessage || errorText}`);
         }
-
-      } catch (error) {
-        console.warn(`STK Push query error (attempt ${attempt}):`, error);
-        lastError = error;
+        
+        // Check for cancelled transaction using result description
+        if (resultDesc.includes('cancelled') || resultDesc.includes('canceled') || resultDesc.includes('cancel')) {
+          console.log('Transaction was cancelled by user');
+          return {
+            success: false,
+            error: 'Transaction was cancelled by user',
+            resultCode: 'TRANSACTION_CANCELLED',
+            resultDesc: responseData.ResultDesc,
+            checkoutRequestId: responseData.CheckoutRequestID,
+            merchantRequestId: responseData.MerchantRequestID
+          };
+        }
+        
+        // Check for timeout using result description
+        if (resultDesc.includes('timeout') || resultDesc.includes('expired') || resultDesc.includes('time out')) {
+          console.log('Transaction timed out');
+          return {
+            success: false,
+            error: 'Transaction timed out',
+            resultCode: 'TRANSACTION_TIMEOUT',
+            resultDesc: responseData.ResultDesc,
+            checkoutRequestId: responseData.CheckoutRequestID,
+            merchantRequestId: responseData.MerchantRequestID
+          };
+        }
+        
+        // Check for insufficient funds using result description
+        if (resultDesc.includes('insufficient') || resultDesc.includes('balance') || resultDesc.includes('funds')) {
+          console.log('Transaction failed due to insufficient funds');
+          return {
+            success: false,
+            error: 'Insufficient funds',
+            resultCode: 'TRANSACTION_FAILED',
+            resultDesc: responseData.ResultDesc,
+            checkoutRequestId: responseData.CheckoutRequestID,
+            merchantRequestId: responseData.MerchantRequestID
+          };
+        }
+        
+        // Check for wrong PIN using result description
+        if (resultDesc.includes('pin') || resultDesc.includes('password') || resultDesc.includes('wrong')) {
+          console.log('Transaction failed due to wrong PIN');
+          return {
+            success: false,
+            error: 'Wrong PIN entered',
+            resultCode: 'TRANSACTION_FAILED',
+            resultDesc: responseData.ResultDesc,
+            checkoutRequestId: responseData.CheckoutRequestID,
+            merchantRequestId: responseData.MerchantRequestID
+          };
+        }
+        
+        // For any other result description, treat as still processing
+        console.log(`Transaction still processing. ResultDesc: ${responseData.ResultDesc}`);
+        return {
+          success: true,
+          pending: true,
+          resultCode: 'TRANSACTION_PENDING',
+          resultDesc: responseData.ResultDesc || 'Transaction is being processed',
+          checkoutRequestId: responseData.CheckoutRequestID,
+          merchantRequestId: responseData.MerchantRequestID
+        };
+        
+      } else {
+        // Handle HTTP error responses
+        let errorData;
+        const errorText = await response.text();
+        
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (parseError) {
+          errorData = { errorMessage: errorText };
+        }
+        
+        console.log(`STK Push query HTTP error: ${response.status} ${response.statusText} - ${errorText}`);
+        
+        // Check if error message indicates transaction is still processing
+        const errorMessage = (errorData.errorMessage || '').toLowerCase();
+        if (errorMessage.includes('being processed') || errorMessage.includes('still processing')) {
+          console.log('Transaction is still being processed (from error message)');
+          return {
+            success: true,
+            pending: true,
+            resultCode: 'TRANSACTION_PENDING',
+            resultDesc: errorData.errorMessage || 'Transaction is being processed'
+          };
+        }
+        
+        // Check for cancellation/timeout in error message
+        if (errorMessage.includes('cancelled') || errorMessage.includes('timeout') || errorMessage.includes('expired')) {
+          return {
+            success: false,
+            error: 'Transaction was cancelled or timed out',
+            resultCode: 'TRANSACTION_CANCELLED',
+            resultDesc: errorData.errorMessage || 'Transaction cancelled or timed out'
+          };
+        }
+        
+        // For other HTTP errors, return as query failed
+        return {
+          success: false,
+          error: `Query failed: ${response.status} ${response.statusText}`,
+          resultCode: 'QUERY_FAILED',
+          resultDesc: errorData.errorMessage || response.statusText
+        };
       }
 
-      // Wait before retrying (except on last attempt)
-      if (attempt < maxRetries) {
-        console.log(`Waiting ${retryDelay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-      }
-    }
-
-    // All retries failed
-    console.error('STK Push query failed after all retries:', lastError);
-    const errorMessage = lastError instanceof Error ? lastError.message : String(lastError);
-    
-    // Check if the last error was due to transaction still processing
-    if (errorMessage.includes('Transaction still processing')) {
+    } catch (error) {
+      console.error('STK Push query error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         success: false,
-        error: 'Transaction is taking longer than expected to process',
-        resultCode: 'TRANSACTION_PENDING',
-        resultDesc: 'Transaction is still being processed. Please check again later or contact support if payment was deducted.'
+        error: `Query failed: ${errorMessage}`,
+        resultCode: 'QUERY_FAILED',
+        resultDesc: 'Network or system error occurred'
       };
     }
-    
-    return {
-      success: false,
-      error: `Query failed after ${maxRetries} attempts: ${errorMessage}`,
-      resultCode: 'QUERY_FAILED',
-      resultDesc: 'Transaction status could not be determined due to server issues'
-    };
   }
 
   /**
