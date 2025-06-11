@@ -50,18 +50,32 @@ cd HelpingHand
 npm install
 ```
 ### 3. Configure Environment Variables
-Create a .env file in the root directory:
+Create a `.env` file in the root directory by copying the example:
 
-```
-DATABASE_URL="file:./database/dev.db"
-MPESA_CONSUMER_KEY=your_mpesa_consumer_key
-MPESA_CONSUMER_SECRET=your_mpesa_consumer_
-secret
-MPESA_SHORTCODE=your_shortcode
-MPESA_PASSKEY=your_passkey
+```bash
+cp .env.example .env
 ```
 
-**Note:** The database file will be stored in the `database/` folder. This directory and the `donations.db` file will be created automatically when the application starts.
+Then edit `.env` with your actual M-Pesa credentials:
+
+```env
+# Server Configuration
+PORT=5173
+
+# M-Pesa Configuration
+MPESA_ENVIRONMENT=sandbox
+MPESA_CONSUMER_KEY=your_actual_consumer_key
+MPESA_CONSUMER_SECRET=your_actual_consumer_secret
+MPESA_BUSINESS_SHORT_CODE=your_actual_shortcode
+MPESA_PASSKEY=your_actual_passkey
+MPESA_CALLBACK_URL=https://your-ngrok-url.ngrok-free.app/api/mpesa/callback
+MPESA_TIMEOUT_URL=https://your-ngrok-url.ngrok-free.app/api/mpesa/timeout
+```
+
+**Note:** 
+- The database file will be stored in the `database/` folder and created automatically
+- M-Pesa credentials must be obtained from [Safaricom Developer Portal](https://developer.safaricom.co.ke/)
+- For local development, you'll need ngrok for M-Pesa webhooks (see M-Pesa Integration section)
 
 ### Database Auto-Setup
 The application includes automatic database initialization:
