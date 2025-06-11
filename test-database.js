@@ -40,12 +40,23 @@ try {
   const adminCount = db.prepare('SELECT COUNT(*) as count FROM admin_users').get();
   console.log('👤 Admin users in database:', adminCount.count);
   
+  // Test reinitialization function
+  console.log('\n🔄 Testing database reinitialization:');
+  try {
+    const reinitPath = initializeDatabase();
+    console.log('✅ Reinitialization successful:', reinitPath);
+  } catch (reinitError) {
+    console.error('❌ Reinitialization failed:', reinitError);
+  }
+  
   console.log('\n✅ Database initialization test completed successfully!');
   
   // Close database connection
   db.close();
   
 } catch (error) {
-  console.error('❌ Database initialization test failed:', error);
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  console.error('❌ Database initialization test failed:', errorMessage);
+  console.error('Full error details:', error);
   process.exit(1);
 }

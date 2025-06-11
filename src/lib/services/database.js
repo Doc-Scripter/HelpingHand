@@ -2,7 +2,28 @@ import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-// Function to ensure database directory and file exist
+/**
+ * Utility function to safely extract error message from unknown error type
+ * This handles the TypeScript/JavaScript issue where caught errors are of type 'unknown'
+ * @param {unknown} error - The error object of unknown type
+ * @returns {string} A string representation of the error message
+ */
+function getErrorMessage(error) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return String(error);
+}
+
+/**
+ * Function to ensure database directory and file exist
+ * Creates the database directory if it doesn't exist and returns the full database path
+ * @returns {string} The full path to the database file
+ * @throws {Error} If unable to create the database directory
+ */
 function ensureDatabaseExists() {
   const databaseDir = 'database';
   const databasePath = join(databaseDir, 'donations.db');
@@ -25,8 +46,9 @@ function ensureDatabaseExists() {
     
     return databasePath;
   } catch (error) {
+    const errorMessage = getErrorMessage(error);
     console.error('❌ Error ensuring database directory exists:', error);
-    throw new Error(`Failed to create database directory: ${error.message}`);
+    throw new Error(`Failed to create database directory: ${errorMessage}`);
   }
 }
 
@@ -36,14 +58,27 @@ const db = new Database(databasePath);
 
 console.log('🚀 Database initialized at:', databasePath);
 
-// Export the database initialization function for testing or manual setup
+/**
+ * Export the database initialization function for testing or manual setup
+ * @returns {string} The full path to the database file
+ * @throws {Error} If unable to initialize the database
+ */
 export function initializeDatabase() {
-  const path = ensureDatabaseExists();
-  console.log('🔄 Database reinitialized at:', path);
-  return path;
+  try {
+    const path = ensureDatabaseExists();
+    console.log('🔄 Database reinitialized at:', path);
+    return path;
+  } catch (error) {
+    const errorMessage = getErrorMessage(error);
+    console.error('❌ Error reinitializing database:', errorMessage);
+    throw error; // Re-throw the original error
+  }
 }
 
-// Export function to get current database path
+/**
+ * Export function to get current database path
+ * @returns {string} The full path to the database file
+ */
 export function getDatabasePath() {
   return join('database', 'donations.db');
 }
@@ -139,7 +174,9 @@ try {
     `);
   }
 } catch (error) {
-  console.error('Error checking/inserting sample projects:', error);
+  const errorMessage = getErrorMessage(error);
+  console.error('❌ Error checking/inserting sample projects:', errorMessage);
+  console.error('Full error details:', error);
 }
 
 export default db;
