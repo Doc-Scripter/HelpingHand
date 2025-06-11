@@ -115,29 +115,25 @@ class MpesaService {
     // Handle different formats
     if (cleaned.startsWith('0')) {
       // Convert 07XXXXXXXX to 2547XXXXXXXX
-      cleaned = '+254' + cleaned.substring(1);
+      cleaned = '254' + cleaned.substring(1);
     } else if (cleaned.startsWith('7')) {
       // Convert 7XXXXXXXX to 2547XXXXXXXX
-      cleaned = '+254' + cleaned;
-    } else if (!cleaned.startsWith('254')) {
+      cleaned = '254' + cleaned;
+    } else if (cleaned.startsWith('254')) {
+      // Already in correct format
+      cleaned = cleaned;
+    } else {
       // Assume it's missing country code
-      cleaned = '+254' + cleaned;
+      cleaned = '254' + cleaned;
     }
     
-    // Validate length (should be 12 digits for Kenya)
+    // Validate length (should be 12 digits for Kenya: 254XXXXXXXXX)
     if (cleaned.length !== 12) {
       throw new Error(`Invalid phone number format: ${phoneNumber}. Expected format: 0712345678`);
     }
     
-    // Validate it's a valid Kenyan mobile number
-    // const validPrefixes = ['254701', '254702', '254703', '254704', '254705', '254706', '254707', '254708', '254709', '254710', '254711', '254712', '254713', '254714', '254715', '254716', '254717', '254718', '254719', '254720', '254721', '254722', '254723', '254724', '254725', '254726', '254727', '254728', '254729'];
-    // const prefix = cleaned.substring(0, 6);
-    
-    // if (!validPrefixes.includes(prefix)) {
-    //   throw new Error(`Invalid Kenyan mobile number: ${phoneNumber}. Must be a valid Safaricom, Airtel, or Telkom number.`);
-    // }
-    
-    return cleaned;
+    // Return with + prefix for M-Pesa API
+    return '+' + cleaned;
   }
 
   /**
