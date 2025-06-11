@@ -1,59 +1,28 @@
-# HelpingHand
-Trae
+- [HelpingHand](#helpinghand)
+  - [Features](#features)
+  - [Tech Stack](#tech-stack)
+  - [Getting Started](#getting-started)
+    - [1. Clone the repository](#1-clone-the-repository)
+    - [2. Install dependencies](#2-install-dependencies)
+    - [3. Configure Environment Variables](#3-configure-environment-variables)
+    - [Database Auto-Setup](#database-auto-setup)
+    - [4. Set up the database](#4-set-up-the-database)
+    - [5. Run the development server](#5-run-the-development-server)
+  - [Project Structure](#project-structure)
+  - [Mpesa Integration with ngrok](#mpesa-integration-with-ngrok)
+    - [Setting up ngrok for M-Pesa Webhooks](#setting-up-ngrok-for-m-pesa-webhooks)
+      - [1. Install ngrok](#1-install-ngrok)
+      - [2. Authenticate ngrok](#2-authenticate-ngrok)
+      - [3. Start your development server](#3-start-your-development-server)
+      - [4. Create ngrok tunnel](#4-create-ngrok-tunnel)
+      - [5. Update M-Pesa Configuration](#5-update-m-pesa-configuration)
+      - [6. Test M-Pesa Integration](#6-test-m-pesa-integration)
+      - [Troubleshooting ngrok](#troubleshooting-ngrok)
+    - [M-Pesa Integration Details](#m-pesa-integration-details)
+      - [To get this working](#to-get-this-working)
+  - [Admin Interface](#admin-interface)
+  - [Deployment](#deployment)
 
-Here is a complete and realistic file structure for your SvelteKit-based anonymous donation platform with admin and Mpesa integration, followed by a full README and custom AI instructions for implementation.
-
-## 📁 Suggested File Structure
-```
-HelpingHand/
-├── README.md
-├── LICENSE
-├── package.json
-├── svelte.config.js
-├── vite.config.js
-├── static/
-│   └── favicon.png
-├── src/
-│   ├── app.d.ts
-│   ├── hooks.server.ts
-│   ├── lib/
-│   │   ├── api/
-│   │   │   ├── mpesa.ts
-│   │   │   └── projects.ts
-│   │   ├── components/
-│   │   │   ├── DonationForm.svelte
-│   │   │   ├── ProjectCard.svelte
-│   │   │   ├── ProjectList.svelte
-│   │   │   ├── AdminDashboard.svelte
-│   │   │   └── AdminProjectTable.svelte
-│   │   └── utils/
-│   │       └── validation.ts
-│   ├── routes/
-│   │   ├── +layout.svelte
-│   │   ├── +page.svelte
-│   │   ├── admin/
-│   │   │   ├── +layout.svelte
-│   │   │   └── +page.svelte
-│   │   ├── donate/
-│   │   │   └── [projectId]/
-│   │   │       └── +page.svelte
-│   │   └── api/
-│   │       ├── donate/
-│   │       │   └── +server.ts
-│   │       ├── projects/
-│   │       │   └── +server.ts
-│   │       └── mpesa/
-│   │           └── +server.ts
-│   └── styles/
-│       └── global.css
-├── prisma/
-│   ├── schema.prisma
-│   └── seed.ts
-├── .env
-├── .gitignore
-└── tsconfig.json
-```
-## 📖 README.md (Full Example)
 # HelpingHand
 A SvelteKit web application that allows well-wishers to anonymously donate to various social projects. No signup is required for donors. The platform provides an admin interface for tracking donations per project and integrates Mpesa for secure payments.
 
@@ -232,6 +201,9 @@ MPESA_RESULT_URL=https://abc123.ngrok-free.app/api/mpesa/result
 - Ensure your credentials are correct in `.env`
 - For local testing, use the M-Pesa sandbox environment with ngrok tunnels
 - Always test webhook endpoints using the ngrok HTTPS URL before deploying to production
+  
+#### To get this working 
+- Checkout [MPESA INTERGRATION](./docs/mpesa/MPESA_INTEGRATION.md) for step by step to get Mpesa setup
 ## Admin Interface
 - Accessible at /admin
 - Displays donation stats per project
