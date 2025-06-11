@@ -29,7 +29,9 @@ Object.defineProperty(process, 'env', {
 global.fetch = vi.fn();
 
 describe('MpesaService', () => {
+  /** @type {any} */
   let mpesaService;
+  /** @type {import('vitest').MockedFunction<typeof fetch>} */
   let mockFetch;
 
   beforeEach(async () => {
@@ -75,6 +77,7 @@ describe('MpesaService', () => {
       
       // Import fresh module with production environment
       const module = await import('./mpesa.js?prod=' + Date.now());
+      /** @type {any} */
       const prodService = module.default;
       
       expect(prodService.baseUrl).toBe('https://api.safaricom.co.ke');
@@ -89,6 +92,7 @@ describe('MpesaService', () => {
 
   describe('generateToken', () => {
     it('should generate token successfully', async () => {
+      /** @type {Partial<Response>} */
       const mockResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({ access_token: 'test_token' })
@@ -111,6 +115,7 @@ describe('MpesaService', () => {
     });
 
     it('should handle token generation failure', async () => {
+      /** @type {Partial<Response>} */
       const mockResponse = {
         ok: false,
         status: 401,
@@ -211,6 +216,7 @@ describe('MpesaService', () => {
   describe('initiateSTKPush', () => {
     beforeEach(() => {
       // Mock successful token generation
+      /** @type {Partial<Response>} */
       const mockTokenResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({ access_token: 'test_token' })
@@ -234,6 +240,7 @@ describe('MpesaService', () => {
     });
 
     it('should initiate STK push successfully', async () => {
+      /** @type {{ phoneNumber: string; amount: number; accountReference: string; transactionDesc: string }} */
       const paymentData = {
         phoneNumber: '+254712345678',
         amount: 100,
@@ -250,6 +257,7 @@ describe('MpesaService', () => {
     });
 
     it('should validate required payment data', async () => {
+      /** @type {{ phoneNumber: string; amount: number; accountReference: string }} */
       const invalidPaymentData = {
         phoneNumber: '',
         amount: 0,
@@ -263,6 +271,7 @@ describe('MpesaService', () => {
     });
 
     it('should validate minimum amount', async () => {
+      /** @type {{ phoneNumber: string; amount: number; accountReference: string }} */
       const paymentData = {
         phoneNumber: '+254712345678',
         amount: 0.5,
@@ -294,6 +303,7 @@ describe('MpesaService', () => {
         });
       });
 
+      /** @type {{ phoneNumber: string; amount: number; accountReference: string }} */
       const paymentData = {
         phoneNumber: '+254712345678',
         amount: 100,
@@ -309,11 +319,13 @@ describe('MpesaService', () => {
 
   describe('querySTKPushStatus', () => {
     it('should query STK push status successfully', async () => {
+      /** @type {Partial<Response>} */
       const mockTokenResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({ access_token: 'test_token' })
       };
       
+      /** @type {Partial<Response>} */
       const mockQueryResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
@@ -339,11 +351,13 @@ describe('MpesaService', () => {
     });
 
     it('should handle cancelled transactions', async () => {
+      /** @type {Partial<Response>} */
       const mockTokenResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({ access_token: 'test_token' })
       };
       
+      /** @type {Partial<Response>} */
       const mockQueryResponse = {
         ok: true,
         json: vi.fn().mockResolvedValue({
@@ -410,6 +424,7 @@ describe('MpesaService', () => {
 
   describe('processCallback', () => {
     it('should process successful callback', () => {
+      /** @type {any} */
       const callbackData = {
         Body: {
           stkCallback: {
@@ -439,6 +454,7 @@ describe('MpesaService', () => {
     });
 
     it('should process failed callback', () => {
+      /** @type {any} */
       const callbackData = {
         Body: {
           stkCallback: {
@@ -458,6 +474,7 @@ describe('MpesaService', () => {
     });
 
     it('should handle malformed callback data', () => {
+      /** @type {any} */
       const malformedData = { invalid: 'data' };
 
       const result = mpesaService.processCallback(malformedData);
