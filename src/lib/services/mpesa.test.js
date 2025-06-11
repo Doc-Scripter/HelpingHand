@@ -2,8 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock environment variables
 vi.mock('dotenv', () => ({
+  default: {
+    config: vi.fn()
+  },
   config: vi.fn()
 }));
+
 
 // Mock process.env
 const mockEnv = {
@@ -57,19 +61,29 @@ describe('MpesaService', () => {
     });
 
     it('should use production URL when environment is production', async () => {
-      // Temporarily change environment
-      const originalEnv = process.env.MPESA_ENVIRONMENT;
-      process.env.MPESA_ENVIRONMENT = 'production';
+      // Create a new mock environment for production
+      const originalEnv = { ...process.env };
       
-      // Re-import to get new instance
-      delete require.cache[require.resolve('./mpesa.js')];
-      const module = await import('./mpesa.js?t=' + Date.now());
+      // Set production environment
+      Object.defineProperty(process, 'env', {
+        value: {
+          ...mockEnv,
+          MPESA_ENVIRONMENT: 'production'
+        },
+        writable: true
+      });
+      
+      // Import fresh module with production environment
+      const module = await import('./mpesa.js?prod=' + Date.now());
       const prodService = module.default;
       
       expect(prodService.baseUrl).toBe('https://api.safaricom.co.ke');
       
       // Restore original environment
-      process.env.MPESA_ENVIRONMENT = originalEnv;
+      Object.defineProperty(process, 'env', {
+        value: originalEnv,
+        writable: true
+      });
     });
   });
 
@@ -221,7 +235,7 @@ describe('MpesaService', () => {
 
     it('should initiate STK push successfully', async () => {
       const paymentData = {
-        phoneNumber: '0712345678',
+        phoneNumber: '+254712345678',
         amount: 100,
         accountReference: 'TEST123',
         transactionDesc: 'Test payment'
@@ -250,7 +264,7 @@ describe('MpesaService', () => {
 
     it('should validate minimum amount', async () => {
       const paymentData = {
-        phoneNumber: '0712345678',
+        phoneNumber: '+254712345678',
         amount: 0.5,
         accountReference: 'TEST123'
       };
@@ -281,7 +295,7 @@ describe('MpesaService', () => {
       });
 
       const paymentData = {
-        phoneNumber: '0712345678',
+        phoneNumber: '+254712345678',
         amount: 100,
         accountReference: 'TEST123'
       };
