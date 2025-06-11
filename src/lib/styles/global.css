@@ -2,9 +2,9 @@
   --color-blue: #e0f2fe;
   --color-green: #dcfce7;
   --max-width: 1200px;
-  --dark-green: #2d5a27;
+  --dark-green: #1da70b;
   --white: #ffffff;
-  --light-green: #a8d5a8;
+  --light-green: #20be20;
 }
 
 * {
@@ -333,19 +333,19 @@ main {
 
 .donate-btn {
   display: inline-block;
-  background: #007bff;
-  color: white;
+  background: var(--white);
+  color: rgb(0, 0, 0);
   padding: 0.75rem 1.5rem;
   text-decoration: none;
   border-radius: 4px;
   transition: background 0.2s;
-  border: none;
+  border: solid black 1px;
   cursor: pointer;
   font-size: 1rem;
 }
 
 .donate-btn:hover {
-  background: #0056b3;
+  background: var(--light-green);
 }
 
 /* Admin Dashboard Styles */
