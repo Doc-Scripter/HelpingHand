@@ -1,6 +1,4 @@
-<script>
-  import { goto } from '$app/navigation';
-  
+<script>  
   export let data;
   
   let project = data.project;
@@ -277,7 +275,7 @@
       </ol>
       
       <div class="mpesa-info">
-        <h4>💡 M-Pesa Tips:</h4>
+        <h4>M-Pesa Tips:</h4>
         <ul>
           <li>Ensure your phone has network coverage</li>
           <li>Make sure you have sufficient M-Pesa balance</li>
@@ -290,5 +288,5 @@
 </div>
 
 <div class="back-link">
-  <a href="/">← Back to Projects</a>
+  <a href="/projects">Back to Projects</a>
 </div>
