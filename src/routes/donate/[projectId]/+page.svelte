@@ -9,7 +9,8 @@
   let messageType = '';
   let checkoutRequestId = '';
   let showStatusCheck = false;
-  let statusCheckInterval = null;
+  /** @type {number | undefined} */
+  let statusCheckInterval;
 
   async function handleDonation() {
     if (!amount || !phoneNumber) {
