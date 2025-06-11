@@ -112,28 +112,32 @@ class MpesaService {
     // Remove any non-digit characters
     let cleaned = phoneNumber.replace(/\D/g, '');
     
-    // Handle different formats
-    if (cleaned.startsWith('0')) {
-      // Convert 07XXXXXXXX to 2547XXXXXXXX
+    // Handle different formats and convert to 254XXXXXXXXX format
+    if (cleaned.startsWith('254')) {
+      // Already in correct format 254XXXXXXXXX
+      cleaned = cleaned;
+    } else if (cleaned.startsWith('0')) {
+      // Convert 0XXXXXXXXX to 254XXXXXXXXX
       cleaned = '254' + cleaned.substring(1);
     } else if (cleaned.startsWith('7')) {
-      // Convert 7XXXXXXXX to 2547XXXXXXXX
+      // Convert 7XXXXXXXX to 254XXXXXXXX
       cleaned = '254' + cleaned;
-    } else if (cleaned.startsWith('254')) {
-      // Already in correct format
-      cleaned = cleaned;
     } else {
-      // Assume it's missing country code
+      // Assume it's missing country code, add 254
       cleaned = '254' + cleaned;
     }
     
     // Validate length (should be 12 digits for Kenya: 254XXXXXXXXX)
     if (cleaned.length !== 12) {
-      throw new Error(`Invalid phone number format: ${phoneNumber}. Expected format: 0712345678`);
+      throw new Error(`Invalid phone number format: ${phoneNumber}. Expected format: 0712345678 or 254712345678`);
     }
     
-    // Return with + prefix for M-Pesa API
-    return '+' + cleaned;
+    // Validate that it starts with 2547 (Kenyan mobile numbers)
+    if (!cleaned.startsWith('2547')) {
+      throw new Error(`Invalid phone number format: ${phoneNumber}. Kenyan mobile numbers should start with 2547`);
+    }
+    
+    return cleaned;
   }
 
   /**
