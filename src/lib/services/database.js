@@ -1,6 +1,52 @@
 import Database from 'better-sqlite3';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 
-const db = new Database('donations.db');
+// Function to ensure database directory and file exist
+function ensureDatabaseExists() {
+  const databaseDir = 'database';
+  const databasePath = join(databaseDir, 'donations.db');
+  
+  try {
+    // Create database directory if it doesn't exist
+    if (!existsSync(databaseDir)) {
+      mkdirSync(databaseDir, { recursive: true });
+      console.log('✅ Created database directory:', databaseDir);
+    } else {
+      console.log('📁 Database directory already exists:', databaseDir);
+    }
+    
+    // Check if database file exists
+    if (existsSync(databasePath)) {
+      console.log('📄 Database file found:', databasePath);
+    } else {
+      console.log('🆕 Database file will be created:', databasePath);
+    }
+    
+    return databasePath;
+  } catch (error) {
+    console.error('❌ Error ensuring database directory exists:', error);
+    throw new Error(`Failed to create database directory: ${error.message}`);
+  }
+}
+
+// Initialize database with proper path
+const databasePath = ensureDatabaseExists();
+const db = new Database(databasePath);
+
+console.log('🚀 Database initialized at:', databasePath);
+
+// Export the database initialization function for testing or manual setup
+export function initializeDatabase() {
+  const path = ensureDatabaseExists();
+  console.log('🔄 Database reinitialized at:', path);
+  return path;
+}
+
+// Export function to get current database path
+export function getDatabasePath() {
+  return join('database', 'donations.db');
+}
 
 // Initialize schema
 db.exec(`
